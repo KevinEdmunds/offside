@@ -1,9 +1,9 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
+	"offside/internal/fpl"
 	"os"
 	"sort"
 	"time"
@@ -11,49 +11,19 @@ import (
 
 const fplBase = "https://fantasy.premierleague.com/api"
 
-type Player struct {
-	ID            int    `json:"id"`
-	FirstName     string `json:"first_name"`
-	SecondName    string `json:"second_name"`
-	TeamID        int    `json:"team"`
-	TotalPoints   int    `json:"total_points"`
-	NowCost       int    `json:"now_cost"`
-	Form          string `json:"form"`
-	SelectedByPct string `json:"selected_by_percent"`
-	ElementType   int    `json:"element_type"` // 1=GK, 2=DEF, 3=MID, 4=FWD
-}
-
-type Team struct {
-	ID        int    `json:"id"`
-	Name      string `json:"name"`
-	ShortName string `json:"short_name"`
-}
-
-type Event struct {
-	ID           int    `json:"id"`
-	Name         string `json:"name"`
-	DeadlineTime string `json:"deadline_time"`
-	IsNext       bool   `json:"is_next"`
-	IsCurrent    bool   `json:"is_current"`
-	IsFinished   bool   `json:"finished"`
-}
-
-type Bootstrap struct {
-	Elements []Player `json:"elements"`
-	Teams    []Team   `json:"teams"`
-	Events   []Event  `json:"events"`
-}
 
 func main() {
 	fmt.Println("Fetching FPL data...")
 
-	bootstrap, err := fetchBootstrap()
+	client := &http.Client{Timeout: 30 * time.Second}
+
+	bootstrap, err := fpl.FetchBootstrap(client, fplBase)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 
-	teams := make(map[int]Team)
+	teams := make(map[int]fpl.Team)
 	for _, t := range bootstrap.Teams {
 		teams[t.ID] = t
 	}
@@ -92,25 +62,4 @@ func main() {
 
 	fmt.Printf("\nTotal players in dataset: %d\n", len(bootstrap.Elements))
 	fmt.Printf("Total teams: %d\n", len(bootstrap.Teams))
-}
-
-func fetchBootstrap() (*Bootstrap, error) {
-	client := &http.Client{Timeout: 30 * time.Second}
-
-	resp, err := client.Get(fplBase + "/bootstrap-static/")
-	if err != nil {
-		return nil, fmt.Errorf("fetch bootstrap: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
-	}
-
-	var bootstrap Bootstrap
-	if err := json.NewDecoder(resp.Body).Decode(&bootstrap); err != nil {
-		return nil, fmt.Errorf("decode bootstrap: %w", err)
-	}
-
-	return &bootstrap, nil
 }
