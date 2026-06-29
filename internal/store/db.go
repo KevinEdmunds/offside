@@ -9,35 +9,39 @@ import (
 	_ "github.com/lib/pq"
 )
 
+func loadEnv() (host, port, user, password, dbname, sslmode string, err error) {
+	_ = godotenv.Load() // .env is optional — vars may be set directly (e.g. in CI)	
+	host = os.Getenv("DB_HOST")
+	port = os.Getenv("DB_PORT")
+	user = os.Getenv("DB_USER")
+	password = os.Getenv("DB_PASSWORD")
+	dbname = os.Getenv("DB_NAME")
+	sslmode = os.Getenv("DB_SSLMODE")
+	return
+}
+
+func DSN() (string, error) {
+	host, port, user, password, dbname, sslmode, err := loadEnv()
+	if err != nil {
+		return "", err
+	}
+	if sslmode == "" {
+		sslmode = "require"
+	}
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", user, password, host, port, dbname, sslmode), nil
+}
+
 func Connect() (*sql.DB, error) {
-	err := godotenv.Load()
-	
+	dsn, err := DSN()
 	if err != nil {
 		return nil, err
 	}
-
-	host := os.Getenv("DB_HOST")
-	port := os.Getenv("DB_PORT")
-	user := os.Getenv("DB_USER")
-	password := os.Getenv("DB_PASSWORD")
-	dbname := os.Getenv("DB_NAME")
-	sslmode := os.Getenv("DB_SSLMODE")
-
-	fmt.Println("Host:", host)
-	fmt.Println("User:", user)
-	fmt.Println("DBName:", dbname)
-	fmt.Println("Password:", password)
-	fmt.Println("Password length: %d\n", len(password))
-
-	db, err := sql.Open("postgres", fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s", host, port, user, password, dbname, sslmode))
-    if err != nil {
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
 		return nil, err
-    }
-
-	err = db.Ping()
-    if err != nil {
+	}
+	if err := db.Ping(); err != nil {
 		return nil, err
-    }
-
+	}
 	return db, nil
 }
