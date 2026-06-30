@@ -5,20 +5,27 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 
 	"offside/internal/store"
 	"offside/migrations"
 
 	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/source/iofs"
-
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	direction := flag.String("direction", "up", "migration direction: up or down")
-	flag.Parse()
+        exe, err := os.Executable()
+    if err == nil {
+        repoRoot := filepath.Join(filepath.Dir(exe), "..", "..")
+        _ = godotenv.Load(filepath.Join(repoRoot, ".env"))
+    }
 
+    direction := flag.String("direction", "up", "migration direction: up or down")
+    flag.Parse()
 	dsn, err := store.DSN()
 	if err != nil {
 		log.Fatalf("building DSN: %v", err)
