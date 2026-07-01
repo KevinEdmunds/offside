@@ -24,6 +24,8 @@ func main() {
         _ = godotenv.Load(filepath.Join(repoRoot, ".env"))
     }
 
+	version := flag.Int("version", -1, "version to force (used with -direction=force)")
+
     direction := flag.String("direction", "up", "migration direction: up or down")
     flag.Parse()
 	dsn, err := store.DSN()
@@ -35,6 +37,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("loading embedded migrations: %v", err)
 	}
+
+	// temporary debug — remove after confirming
+	entries, _ := migrations.FS.ReadDir(".")
+	fmt.Println("=== embedded files ===")
+	for _, e := range entries {
+		fmt.Println(" ", e.Name())
+	}
+	fmt.Println("=== end embedded files ===")
 
 	m, err := migrate.NewWithSourceInstance("iofs", sourceDriver, dsn)
 	if err != nil {
@@ -53,6 +63,14 @@ func main() {
 			log.Fatalf("migrate down: %v", err)
 		}
 		fmt.Println("Migrations rolled back successfully")
+	case "force":
+		if *version == -1 {
+			log.Fatalf("force requires a -version flag, e.g. -version=1")
+		}
+		if err := m.Force(*version); err != nil {
+			log.Fatalf("force version: %v", err)
+		}
+		fmt.Printf("Forced version to %d\n", *version)
 	default:
 		log.Fatalf("unknown direction %q: must be 'up' or 'down'", *direction)
 	}
