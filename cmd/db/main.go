@@ -25,7 +25,7 @@ func main() {
     }
 
 	version := flag.Int("version", -1, "version to force (used with -direction=force)")
-
+	steps := flag.Int("steps", 0, "number of migration steps to move (positive=up, negative=down, used with -direction=steps)")
     direction := flag.String("direction", "up", "migration direction: up or down")
     flag.Parse()
 	dsn, err := store.DSN()
@@ -58,7 +58,7 @@ func main() {
 			log.Fatalf("migrate up: %v", err)
 		}
 		fmt.Println("Migrations applied successfully")
-	case "down":
+	case "reset":
 		if err := m.Down(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 			log.Fatalf("migrate down: %v", err)
 		}
@@ -71,6 +71,14 @@ func main() {
 			log.Fatalf("force version: %v", err)
 		}
 		fmt.Printf("Forced version to %d\n", *version)
+	case "steps":
+		if *steps == 0 {
+			log.Fatalf("steps requires a nonzero -steps flag, e.g. -steps=-1")
+		}
+		if err := m.Steps(*steps); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+			log.Fatalf("migrate steps: %v", err)
+		}
+		fmt.Printf("Moved %d step(s)\n", *steps)
 	default:
 		log.Fatalf("unknown direction %q: must be 'up' or 'down'", *direction)
 	}
