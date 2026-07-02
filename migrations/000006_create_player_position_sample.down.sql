@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS player_position_sample;
